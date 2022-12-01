@@ -125,7 +125,20 @@ def insert_data_test(session):
                 session.commit()
 
 
+def get_publisher(ssesion):
+    publisher = int(input('Введите id -> '))
+    data = ssesion.query(Book.title,
+                         Shop.name,
+                         Sale.price,
+                         Sale.date_sale).filter(Stock.id_book == Book.id) \
+        .filter(Stock.id_shop == Shop.id) \
+        .filter(Sale.id_stock == Stock.id) \
+        .filter(Book.id_publisher == publisher).all()
+    return data
+
+
 create_table(engine)
 session = sessionmaker(bind=engine)
 s = session()
+print(get_publisher(s))
 insert_data_test(s)
