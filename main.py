@@ -1,81 +1,8 @@
-import psycopg2
-from sqlalchemy.orm import relationship, sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import create_engine, MetaData, Column, ForeignKey, Integer, String, DateTime, Numeric
+import db
 import json
-
-conn = psycopg2.connect(database='postgres', user='postgres', password='1234567890', host='localhost', port='5434')
-
-with conn.cursor() as cur:
-    cur.execute("""
-        CREATE SCHEMA IF NOT EXISTS "library";
-        """)
-    conn.commit()
-conn.close()
-
-DSN = 'postgresql+psycopg2://postgres:1234567890@localhost:5434/postgres'
-engine = create_engine(DSN)
-
-Base = declarative_base(metadata=MetaData(schema='library'))
-
-
-class Publisher(Base):
-    __tablename__ = "publisher"
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String(250), nullable=False)
-    # book = relationship("book")
-
-
-class Book(Base):
-    __tablename__ = "book"
-
-    id = Column(Integer, primary_key=True)
-    title = Column(String(250), nullable=False)
-    id_publisher = Column(Integer, ForeignKey("publisher.id"), nullable=False)
-
-    publisher = relationship(Publisher, backref="book")
-
-
-class Shop(Base):
-    __tablename__ = "shop"
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String(250), nullable=False)
-    # stock = relationship("stock")
-
-
-class Stock(Base):
-    __tablename__ = "stock"
-
-    id = Column(Integer, primary_key=True)
-    id_book = Column(Integer, ForeignKey("book.id"), nullable=False)
-    id_shop = Column(Integer, ForeignKey("shop.id"), nullable=False)
-    count = Column(Integer)
-    book = relationship(Book, backref="book")
-    shop = relationship(Shop, backref="shop")
-    # sale = relationship("sale")
-
-
-class Sale(Base):
-    __tablename__ = "sale"
-
-    id = Column(Integer, primary_key=True)
-    price = Column(Numeric)
-    date_sale = Column(DateTime)
-    id_stock = Column(Integer, ForeignKey("stock.id"), nullable=False)
-    count = Column(Numeric)
-    stock = relationship(Stock, backref="sale")
-
-
-def create_table(engine):
-    Base.metadata.create_all(engine)
-
-
-def delete_data(session, table):
-    data = session.query(table).all()
-    session.delete(data)
-    session.commit()
+import psycopg2
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine
 
 
 def insert_data_test(session):
@@ -83,14 +10,14 @@ def insert_data_test(session):
         data = json.load(data_test)
         for table in data:
             if table['model'] == 'publisher':
-                insert = Publisher(
+                insert = db.Publisher(
                     id=table['pk'],
                     name=table['fields']['name']
                 )
                 session.add(insert)
                 session.commit()
             if table['model'] == 'book':
-                insert = Book(
+                insert = db.Book(
                     id=table['pk'],
                     title=table['fields']['title'],
                     id_publisher=table['fields']['id_publisher']
@@ -98,14 +25,14 @@ def insert_data_test(session):
                 session.add(insert)
                 session.commit()
             if table['model'] == 'shop':
-                insert = Shop(
+                insert = db.Shop(
                     id=table['pk'],
                     name=table['fields']['name']
                 )
                 session.add(insert)
                 session.commit()
             if table['model'] == 'stock':
-                insert = Stock(
+                insert = db.Stock(
                     id=table['pk'],
                     id_book=table['fields']['id_book'],
                     id_shop=table['fields']['id_shop'],
@@ -114,7 +41,7 @@ def insert_data_test(session):
                 session.add(insert)
                 session.commit()
             if table['model'] == 'sale':
-                insert = Sale(
+                insert = db.Sale(
                     id=table['pk'],
                     price=table['fields']['price'],
                     date_sale=table['fields']['date_sale'],
@@ -127,18 +54,44 @@ def insert_data_test(session):
 
 def get_publisher(ssesion):
     publisher = int(input('Введите id -> '))
-    data = ssesion.query(Book.title,
-                         Shop.name,
-                         Sale.price,
-                         Sale.date_sale).filter(Stock.id_book == Book.id) \
-        .filter(Stock.id_shop == Shop.id) \
-        .filter(Sale.id_stock == Stock.id) \
-        .filter(Book.id_publisher == publisher).all()
-    return data
+    # data = ssesion.query(Book.title,
+    #                      Shop.name,
+    #                      Sale.price,
+    #                      Sale.date_sale).filter(Stock.id_book == Book.id) \
+    #     .filter(Stock.id_shop == Shop.id) \
+    #     .filter(Sale.id_stock == Stock.id) \
+    #     .filter(Book.id_publisher == publisher).all()
+    data = ssesion.query(db.Book, db.Shop, db.Sale)
+    data = data.join(db.Publisher, db.Publisher.id == db.Book.id_publisher)
+    data = data.join(db.Stock, db.Stock.id_book == db.Book.id)
+    data = data.join(db.Shop, db.Shop.id == db.Stock.id_shop)
+    data = data.join(db.Sale, db.Sale.id_stock == db.Stock.id)
+    records = data.filter(db.Publisher.id == publisher).all()
+    for book, shop, sale in records:
+        print(f'{book.title} | {shop.name} | {sale.price} | {sale.date_sale}')
 
 
-create_table(engine)
+database = 'postgres'
+user = 'postgres'
+password = '1234567890'
+host = 'localhost'
+port = '5434'
+
+conn = psycopg2.connect(database=database, user=user, password=password, host=host, port=port)
+
+with conn.cursor() as cur:
+    cur.execute("""
+        CREATE SCHEMA IF NOT EXISTS "library";
+        SET search_path TO "library";
+        """)
+    conn.commit()
+conn.close()
+
+DSN = f'postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}'
+engine = create_engine(DSN)
+
+db.create_table(engine)
 session = sessionmaker(bind=engine)
 s = session()
-print(get_publisher(s))
-insert_data_test(s)
+get_publisher(s)
+# insert_data_test(s)
