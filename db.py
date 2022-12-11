@@ -10,7 +10,6 @@ class Publisher(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(250), nullable=False)
-    # book = relationship("Book")
 
 
 class Book(Base):
@@ -27,7 +26,6 @@ class Shop(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(250), nullable=False)
-    # stock = relationship("stock")
 
 
 class Stock(Base):
@@ -39,7 +37,6 @@ class Stock(Base):
     count = Column(Integer)
     book = relationship("Book", backref="book")
     shop = relationship("Shop", backref="shop")
-    # sale = relationship("sale")
 
 
 class Sale(Base):

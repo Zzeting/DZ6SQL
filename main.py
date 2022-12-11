@@ -54,13 +54,6 @@ def insert_data_test(session):
 
 def get_publisher(ssesion):
     publisher = int(input('Введите id -> '))
-    # data = ssesion.query(Book.title,
-    #                      Shop.name,
-    #                      Sale.price,
-    #                      Sale.date_sale).filter(Stock.id_book == Book.id) \
-    #     .filter(Stock.id_shop == Shop.id) \
-    #     .filter(Sale.id_stock == Stock.id) \
-    #     .filter(Book.id_publisher == publisher).all()
     data = ssesion.query(db.Book, db.Shop, db.Sale)
     data = data.join(db.Publisher, db.Publisher.id == db.Book.id_publisher)
     data = data.join(db.Stock, db.Stock.id_book == db.Book.id)
@@ -93,5 +86,6 @@ engine = create_engine(DSN)
 db.create_table(engine)
 session = sessionmaker(bind=engine)
 s = session()
+insert_data_test(s)
 get_publisher(s)
-# insert_data_test(s)
+
